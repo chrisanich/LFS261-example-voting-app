@@ -1,5 +1,5 @@
 pipeline {
-    agent none  // No default agent for the entire pipeline
+    agent none
 
     tools {
         git 'Default'  // Define the Git tool to use, matching the Jenkins Global Tool Configuration
@@ -7,62 +7,52 @@ pipeline {
 
     stages {
         stage('Checkout') {
-            agent any  // Use any agent to checkout code
+            agent any
             steps {
                 echo 'Checking out the result application...'
-                checkout scm  // Check out code from the configured Git repository
+                checkout scm
             }
         }
 
         stage('Build') {
-            when {
-                changeset "**/result/**"  // Trigger build only if there are changes in the result directory
-            }
             agent {
                 docker {
-                    image 'node:18-slim'  // Use Node.js Docker image for building the application
-                    args '-v $HOME/.npm:/root/.npm'  // Bind volume to persist npm cache
+                    image 'node:18-slim'
+                    args '-v $HOME/.npm:/root/.npm'
                 }
             }
             steps {
                 echo 'Building result application...'
                 dir('result') {
-                    sh 'npm install'  // Install dependencies
+                    sh 'npm install'
                 }
             }
         }
 
         stage('Test') {
-            when {
-                changeset "**/result/**"  // Trigger tests only if there are changes in the result directory
-            }
             agent {
                 docker {
-                    image 'node:18-slim'  // Use Node.js Docker image for running tests
+                    image 'node:18-slim'
                     args '-v $HOME/.npm:/root/.npm'
                 }
             }
             steps {
                 echo 'Running tests on result application...'
                 dir('result') {
-                    sh 'npm test'  // Run unit tests using npm
+                    sh 'npm test'
                 }
             }
         }
 
         stage('Docker Build & Push') {
             agent any
-            when {
-                changeset "**/result/**"  // Ensure this stage runs only if there are changes in the result directory
-                branch 'master'  // Ensure this stage runs only on the master branch
-            }
             steps {
                 echo 'Building Docker image for result application...'
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
                         def resultImage = docker.build("chrisanich/result:v${env.BUILD_ID}", "./result")
-                        resultImage.push()  // Push image with build ID tag
-                        resultImage.push("latest")  // Push image with the 'latest' tag
+                        resultImage.push()
+                        resultImage.push("latest")
                     }
                 }
             }
@@ -71,7 +61,7 @@ pipeline {
 
     post {
         always {
-            echo 'Build and Docker packaging for result application is complete.'  // Final message after pipeline completion
+            echo 'Build and Docker packaging for result application is complete.'
         }
     }
 }
