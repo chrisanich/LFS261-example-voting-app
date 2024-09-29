@@ -1,7 +1,7 @@
 # Use the Node.js image for the application
 FROM node:18-slim
 
-# Add curl and tini for health check and process management
+# Install curl and tini for health check and process management
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl tini && \
     rm -rf /var/lib/apt/lists/*
