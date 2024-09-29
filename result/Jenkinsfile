@@ -4,36 +4,36 @@ pipeline {
     stages {
         stage('build') {
             when {
-                changeset "**/vote/**"
+                changeset "**/result/**"
             }
             agent {
                 docker {
-                    image 'python:3.11-slim'  // Python image for the vote application
+                    image 'node:18-slim'  // Node.js image for the result application
                     args '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
-                echo 'Building vote application...'
-                dir('vote') {
-                    sh 'pip install -r requirements.txt'
+                echo 'Building result application...'
+                dir('result') {
+                    sh 'npm install'
                 }
             }
         }
 
         stage('test') {
             when {
-                changeset "**/vote/**"
+                changeset "**/result/**"
             }
             agent {
                 docker {
-                    image 'python:3.11-slim'
+                    image 'node:18-slim'
                     args '-v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
-                echo 'Running tests on vote application...'
-                dir('vote') {
-                    sh 'pytest'
+                echo 'Running tests on result application...'
+                dir('result') {
+                    sh 'npm test'
                 }
             }
         }
@@ -41,16 +41,16 @@ pipeline {
         stage('docker-package') {
             agent any
             when {
-                changeset "**/vote/**"
+                changeset "**/result/**"
                 branch 'master'
             }
             steps {
-                echo 'Building Docker image for vote application...'
+                echo 'Building Docker image for result application...'
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
-                        def voteImage = docker.build("chrisanich/vote:v${env.BUILD_ID}", "./vote")
-                        voteImage.push()
-                        voteImage.push("latest")
+                        def resultImage = docker.build("chrisanich/result:v${env.BUILD_ID}", "./result")
+                        resultImage.push()
+                        resultImage.push("latest")
                     }
                 }
             }
@@ -59,7 +59,7 @@ pipeline {
 
     post {
         always {
-            echo 'Build and Docker packaging for vote application is complete.'
+            echo 'Build and Docker packaging for result application is complete.'
         }
     }
 }
