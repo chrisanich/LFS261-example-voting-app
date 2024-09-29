@@ -1,0 +1,66 @@
+pipeline {
+    agent none
+
+    stages {
+        stage('build') {
+            when {
+                changeset "**/result/**"
+            }
+            agent {
+                docker {
+                    image 'node:18-slim'  // Using Node.js base image for the result application
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
+            steps {
+                echo 'Building result application...'
+                dir('result') {
+                    sh 'npm install'  // Install dependencies using npm
+                }
+            }
+        }
+
+        stage('test') {
+            when {
+                changeset "**/result/**"
+            }
+            agent {
+                docker {
+                    image 'node:18-slim'  // Use the same image for testing
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
+            steps {
+                echo 'Running tests on result application...'
+                dir('result') {
+                    sh 'npm test'  // Run tests using npm
+                }
+            }
+        }
+
+        stage('docker-package') {
+            agent any
+            when {
+                changeset "**/result/**"
+                branch 'master'  // Ensures this stage only runs on the master branch
+            }
+            steps {
+                echo 'Building Docker image for result application...'
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
+                        // Build the Docker image for the result application
+                        def resultImage = docker.build("chrisanich/result:v${env.BUILD_ID}", "./result")
+                        resultImage.push()  // Push the image with the version tag
+                        resultImage.push("latest")  // Push the image with the 'latest' tag
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            echo 'Build and Docker packaging for result application is complete.'
+        }
+    }
+}
