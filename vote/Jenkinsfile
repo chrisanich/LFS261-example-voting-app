@@ -28,6 +28,15 @@ pipeline {
                         
                         # Add the user local bin to PATH for this session
                         export PATH=$PATH:/root/.local/bin
+
+                        # Print Python and pip location, PATH, and Python packages
+                        echo "Python location: $(which python3)"
+                        echo "Pip location: $(which pip)"
+                        echo "Pytest location: $(which pytest)"
+                        echo "Python version: $(python3 --version)"
+                        echo "Pip version: $(pip --version)"
+                        echo "PATH: $PATH"
+                        pip list
                     '''
                 }
             }
@@ -47,8 +56,10 @@ pipeline {
                 echo 'Running tests on vote application...'
                 dir('vote') {
                     sh '''
-                        # Ensure pytest is in PATH
-                        export PATH=$PATH:/root/.local/bin
+                        # Print PATH and check if pytest is available
+                        echo "Before running tests:"
+                        echo "PATH: $PATH"
+                        which pytest || echo "pytest not found"
                         pytest
                     '''
                 }
