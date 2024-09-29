@@ -2,7 +2,7 @@ pipeline {
     agent none
 
     tools {
-        git 'Default'  // Define the Git tool to use, matching the Jenkins Global Tool Configuration
+        git 'Default'  // Ensure this matches the Git configuration name in Jenkins
     }
 
     stages {
@@ -24,8 +24,10 @@ pipeline {
             steps {
                 echo 'Building vote application...'
                 dir('vote') {
+                    // Install required packages
                     sh 'pip install -r requirements.txt --user'
-                    sh 'pip install pytest --user'  // Install pytest explicitly
+                    // Ensure pytest is installed
+                    sh 'pip install pytest --user'
                 }
             }
         }
@@ -38,11 +40,12 @@ pipeline {
                 }
             }
             environment {
-                PATH = "/root/.local/bin:$PATH"  // Add the local bin directory to PATH
+                PATH = "/root/.local/bin:$PATH"  // Ensure the PATH includes the directory where pytest is installed
             }
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
+                    // Run pytest
                     sh 'pytest'
                 }
             }
@@ -50,6 +53,11 @@ pipeline {
 
         stage('Docker Build & Push') {
             agent any
+            when {
+                expression {
+                    return currentBuild.currentResult == 'SUCCESS'
+                }
+            }
             steps {
                 echo 'Building Docker image for vote application...'
                 script {
