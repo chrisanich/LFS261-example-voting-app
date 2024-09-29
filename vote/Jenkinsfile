@@ -45,8 +45,10 @@ pipeline {
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
+                    // Verify pytest is in PATH
+                    sh 'echo $PATH'
                     // Run pytest
-                    sh 'pytest'
+                    sh 'pytest || { echo "pytest not found in PATH"; exit 1; }'
                 }
             }
         }
