@@ -21,14 +21,18 @@ pipeline {
                 echo 'Building vote application...'
                 dir('vote') {
                     sh '''
-                        # Create a virtual environment
-                        python -m venv venv
-                        . venv/bin/activate
-
-                        # Upgrade pip and install dependencies from the correct requirements path
-                        pip install --upgrade pip
-                        pip install -r ../requirements.txt  # Use the correct path based on requirements location
-                        pip install pytest
+                        # Install necessary Python packages without virtual environments
+                        python3 -m pip install --upgrade pip
+                        
+                        # Change path if requirements.txt is in a different directory
+                        if [ -f ../requirements.txt ]; then
+                            python3 -m pip install -r ../requirements.txt
+                        else
+                            python3 -m pip install -r requirements.txt
+                        fi
+                        
+                        # Install pytest
+                        python3 -m pip install pytest
                     '''
                 }
             }
@@ -48,7 +52,7 @@ pipeline {
                 echo 'Running tests on vote application...'
                 dir('vote') {
                     sh '''
-                        . venv/bin/activate
+                        # Run the tests using pytest
                         pytest
                     '''
                 }
