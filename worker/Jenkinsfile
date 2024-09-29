@@ -1,53 +1,77 @@
 pipeline {
-    agent {
-        // Define the Docker agent with the specified Maven image and bind the local .m2 directory for caching dependencies
-        docker {
-            image 'maven:3.9.8-sapmachine-21' // Using Maven Docker image for build environment
-            args '-v $HOME/.m2:/root/.m2' // Bind local Maven repository to Docker container to speed up builds
-        }
-    }
-    
+    agent none  // No default agent for the entire pipeline
+
     stages {
-        stage('build') { // Stage to build the project
+        stage("build") {
+            when {
+                changeset "**/worker/**"
+            }
+            agent {
+                docker {
+                    image 'maven:3.9.8-sapmachine-21'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                echo 'Building worker app' // Message indicating the build stage
-                dir('worker') { // Change directory to 'worker' folder
-                    sh 'mvn compile' // Run Maven compile command
+                echo 'Compiling worker app...'
+                dir('worker') {
+                    sh 'mvn compile'
                 }
             }
         }
 
-        stage('test') { // Stage to run unit tests
+        stage("test") {
+            when {
+                changeset "**/worker/**"
+            }
+            agent {
+                docker {
+                    image 'maven:3.9.8-sapmachine-21'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                echo 'Running unit tests on worker app' // Message indicating the test stage
-                dir('worker') { // Change directory to 'worker' folder
-                    sh 'mvn clean test' // Run Maven clean and test commands
+                echo 'Running Unit Tests on worker app...'
+                dir('worker') {
+                    sh 'mvn clean test'
                 }
             }
         }
 
-        stage('package') { // Stage to package the application
-            steps {
-                echo 'Packaging worker app into a JAR file' // Message indicating the packaging stage
-                dir('worker') { // Change directory to 'worker' folder
-                    sh 'mvn package -DskipTests' // Run Maven package command, skipping tests
+        stage("package") {
+            when {
+                branch 'master'
+                changeset "**/worker/**"
+            }
+            agent {
+                docker {
+                    image 'maven:3.9.8-sapmachine-21'
+                    args '-v $HOME/.m2:/root/.m2'
                 }
-                
-                // Archive the JAR file generated in the target directory and create a fingerprint for tracking
-                archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+            }
+            steps {
+                echo 'Packaging worker app...'
+                dir('worker') {
+                    sh 'mvn package -DskipTests'
+                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                }
             }
         }
 
-        stage('docker-package') { // Stage to package the app into a Docker image
-            agent any // Use any available agent for this stage
+        stage('docker-package') {
+            agent any
+            when {
+                changeset "**/worker/**"
+                branch 'master'
+            }
             steps {
-                echo 'Packaging worker app with Docker' // Message indicating Docker packaging stage
-                
+                echo 'Packaging worker app with Docker...'
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') { // Use Docker registry with specified credentials
-                        def workerImage = docker.build("chrisanich/worker:v${env.BUILD_ID}", "./worker") // Build the Docker image with a version tag
-                        workerImage.push() // Push the Docker image with the version tag
-                        workerImage.push("latest") // Push the Docker image with the "latest" tag
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
+                        def workerImage = docker.build("chrisanich/worker:v${env.BUILD_ID}", "./worker")
+                        workerImage.push()
+                        workerImage.push("${env.BRANCH_NAME}")
+                        workerImage.push("latest")
                     }
                 }
             }
@@ -56,7 +80,7 @@ pipeline {
 
     post {
         always {
-            echo 'The job is complete' // Message printed regardless of job status
+            echo 'Building multibranch pipeline for worker is completed.'
         }
     }
 }
