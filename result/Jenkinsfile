@@ -5,7 +5,7 @@ pipeline {
         stage('Build') {
             agent {
                 docker {
-                    image 'node:18-slim'  // Use the Node.js Docker image for the build stage
+                    image 'node:18-slim'  // Use the Node.js Docker image that includes npm
                     args '-v $HOME/.npm:/root/.npm'
                 }
             }
@@ -20,13 +20,13 @@ pipeline {
         stage('Test') {
             agent {
                 docker {
-                    image 'node:18-slim'  // Use the Node.js Docker image for the test stage
+                    image 'node:18-slim'  // Use the same image for the test stage
                 }
             }
             steps {
                 echo 'Running tests on result application...'
                 dir('result') {
-                    sh 'npm test'  // Run npm tests
+                    sh 'npm test'  // Run tests using npm
                 }
             }
         }
@@ -34,7 +34,7 @@ pipeline {
         stage('Docker Build & Push') {
             agent any
             environment {
-                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Docker Hub credentials
+                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Replace with the ID used in Jenkins for Docker Hub credentials
             }
             steps {
                 script {
