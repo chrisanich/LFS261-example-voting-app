@@ -1,19 +1,30 @@
 pipeline {
-    agent none  // No default agent for the entire pipeline
+    agent none
+
+    tools {
+        git 'Default'  // Define the Git tool to use, matching the Jenkins Global Tool Configuration
+    }
 
     stages {
+        stage('Checkout') {
+            agent any
+            steps {
+                echo 'Checking out the vote application...'
+                checkout scm
+            }
+        }
+
         stage('Build') {
             agent {
                 docker {
-                    image 'python:3.11-slim'  // Use the Python Docker image that includes pip
-                    args '-v $HOME/.m2:/root/.m2'
+                    image 'python:3.11-slim'
+                    args '-u root:root -v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
                 echo 'Building vote application...'
                 dir('vote') {
-                    // Install packages with user permissions and avoid upgrading pip to avoid permission issues
-                    sh 'mkdir -p $HOME/.local && pip install --user -r requirements.txt'  
+                    sh 'pip install -r requirements.txt --user'
                 }
             }
         }
@@ -21,28 +32,27 @@ pipeline {
         stage('Test') {
             agent {
                 docker {
-                    image 'python:3.11-slim'  // Use the same image for the test stage
+                    image 'python:3.11-slim'
+                    args '-u root:root -v $HOME/.m2:/root/.m2'
                 }
             }
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
-                    sh 'pytest'  // Run tests using pytest
+                    sh 'pytest'
                 }
             }
         }
 
         stage('Docker Build & Push') {
             agent any
-            environment {
-                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Use Docker Hub credentials
-            }
             steps {
+                echo 'Building Docker image for vote application...'
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS) {
-                        def voteImage = docker.build("chrisanich/vote:${env.BUILD_NUMBER}", "./vote")
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
+                        def voteImage = docker.build("chrisanich/vote:v${env.BUILD_ID}", "./vote")
                         voteImage.push()
-                        voteImage.push('latest')
+                        voteImage.push("latest")
                     }
                 }
             }
