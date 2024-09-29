@@ -1,56 +1,23 @@
 pipeline {
-    agent none  // No default agent for the entire pipeline
+    agent any
+
+    tools {
+        git 'Default'  // Name must match the Git installation name in Jenkins
+    }
 
     stages {
-        stage('Build') {
-            agent {
-                docker {
-                    image 'node:18-slim'  // Use the Node.js Docker image that includes npm
-                    args '-v $HOME/.npm:/root/.npm'
-                }
-            }
+        stage('Checkout') {
             steps {
-                echo 'Building result application...'
-                dir('result') {
-                    sh 'npm install'  // Run npm install to set up dependencies
-                }
+                checkout scm
             }
         }
 
-        stage('Test') {
-            agent {
-                docker {
-                    image 'node:18-slim'  // Use the same image for the test stage
-                }
-            }
-            steps {
-                echo 'Running tests on result application...'
-                dir('result') {
-                    sh 'npm test'  // Run tests using npm
-                }
-            }
-        }
-
-        stage('Docker Build & Push') {
-            agent any
-            environment {
-                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Replace with the ID used in Jenkins for Docker Hub credentials
-            }
-            steps {
-                script {
-                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS) {
-                        def resultImage = docker.build("chrisanich/result:${env.BUILD_NUMBER}", "./result")
-                        resultImage.push()
-                        resultImage.push('latest')
-                    }
-                }
-            }
-        }
+        // Your other stages (e.g., Build, Test, Docker Build & Push)
     }
 
     post {
         always {
-            echo 'Build and Docker packaging for result application is complete.'
+            echo 'Pipeline execution complete.'
         }
     }
 }
