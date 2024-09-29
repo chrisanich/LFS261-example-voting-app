@@ -1,23 +1,26 @@
-# Use the Python runtime image
-FROM python:3.11-slim
+# Define a base stage that uses the official Python runtime base image
+FROM python:3.11-slim AS base
 
-# Install curl for health check
+# Add curl for health check
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Set the working directory inside the container
+# Set the application directory
 WORKDIR /usr/local/app
 
-# Copy the requirements file and install dependencies
+# Install the requirements
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Copy all source code to the container
+# Define the final stage that will bundle the application for production
+FROM base AS final
+
+# Copy our code from the current folder to the working directory inside the container
 COPY . .
 
-# Expose port 80
+# Make port 80 available for links and/or publish
 EXPOSE 80
 
-# Run the application using gunicorn
+# Define our command to be run when launching the container
 CMD ["gunicorn", "app:app", "-b", "0.0.0.0:80", "--log-file", "-", "--access-logfile", "-", "--workers", "4", "--keep-alive", "0"]
