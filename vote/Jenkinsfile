@@ -24,12 +24,14 @@ pipeline {
             steps {
                 echo 'Building vote application...'
                 dir('vote') {
-                    // Set up virtual environment and install dependencies
                     sh '''
+                        # Set up virtual environment
                         python -m venv venv
                         . venv/bin/activate
+                        
+                        # Upgrade pip and install dependencies
                         pip install --upgrade pip
-                        pip install -r requirements.txt
+                        pip install -r ../requirements.txt
                         pip install pytest
                     '''
                 }
@@ -43,12 +45,15 @@ pipeline {
                     args '-u root:root -v $HOME/.m2:/root/.m2'
                 }
             }
+            environment {
+                PYTHONPATH = "${env.WORKSPACE}/vote"  // Set PYTHONPATH to include the vote directory
+            }
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
-                    // Run tests within the virtual environment
                     sh '''
                         . venv/bin/activate
+                        # Run tests with pytest
                         pytest
                     '''
                 }
