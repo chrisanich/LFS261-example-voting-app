@@ -51,9 +51,9 @@ pipeline {
         }
 
         stage('Docker Build & Push') {
-            agent any  // Use any agent to build and push Docker image
+            agent any
             when {
-                changeset "**/result/**"  // Trigger Docker build only if there are changes in the result directory
+                changeset "**/result/**"  // Ensure this stage runs only if there are changes in the result directory
                 branch 'master'  // Ensure this stage runs only on the master branch
             }
             steps {
