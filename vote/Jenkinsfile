@@ -1,17 +1,8 @@
 pipeline {
-    agent none  // No default agent for the entire pipeline
+    agent any  // Use any available agent
 
     stages {
-        stage('build') {
-            when {
-                changeset "**/vote/**"
-            }
-            agent {
-                docker {
-                    image 'python:3.11-slim'  // Python image for the vote application
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
+        stage('Build') {
             steps {
                 echo 'Building vote application...'
                 dir('vote') {
@@ -20,16 +11,7 @@ pipeline {
             }
         }
 
-        stage('test') {
-            when {
-                changeset "**/vote/**"
-            }
-            agent {
-                docker {
-                    image 'python:3.11-slim'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
+        stage('Test') {
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
@@ -38,19 +20,16 @@ pipeline {
             }
         }
 
-        stage('docker-package') {
-            agent any
-            when {
-                changeset "**/vote/**"
-                branch 'master'
+        stage('Docker Build & Push') {
+            environment {
+                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Ensure you have this credential set in Jenkins
             }
             steps {
-                echo 'Building Docker image for vote application...'
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
-                        def voteImage = docker.build("chrisanich/vote:v${env.BUILD_ID}", "./vote")
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS) {
+                        def voteImage = docker.build("chrisanich/vote:${env.BUILD_NUMBER}", "./vote")
                         voteImage.push()
-                        voteImage.push("latest")
+                        voteImage.push('latest')
                     }
                 }
             }
