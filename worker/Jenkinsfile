@@ -1,41 +1,86 @@
 pipeline {
-    agent {
-        docker {
-            image 'maven:3.9.8-sapmachine-21'  // Using a Docker image with Maven for the worker app
-            args '-v $HOME/.m2:/root/.m2'     // Mounting the Maven repository from host to container
-        }
-    }
+    agent none  // No default agent for the entire pipeline
+
     stages {
-        stage('build') {
+        stage("build") {
+            when {
+                changeset "**/worker/**"
+            }
+            agent {
+                docker {
+                    image 'maven:3.9.8-sapmachine-21'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                echo 'building worker app'
+                echo 'Compiling worker app...'
                 dir('worker') {
-                    sh 'mvn compile'   // Compiling the Maven project inside the Docker container
+                    sh 'mvn compile'
                 }
             }
         }
-        stage('test') {
+
+        stage("test") {
+            when {
+                changeset "**/worker/**"
+            }
+            agent {
+                docker {
+                    image 'maven:3.9.8-sapmachine-21'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                echo 'running unit tests'
+                echo 'Running Unit Tests on worker app...'
                 dir('worker') {
-                    sh 'mvn clean test'  // Running tests inside Docker
+                    sh 'mvn clean test'
                 }
             }
         }
-        stage('package') {
+
+        stage("package") {
+            when {
+                branch 'master'  // Reverted back to 'master'
+                changeset "**/worker/**"
+            }
+            agent {
+                docker {
+                    image 'maven:3.9.8-sapmachine-21'
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
-                echo 'packaging worker app into a jar file'
+                echo 'Packaging worker app...'
                 dir('worker') {
-                    sh 'mvn package -DskipTests'   // Packaging the project
+                    sh 'mvn package -DskipTests'
                     archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
                 }
             }
         }
+
+        stage('docker-package') {
+            agent any
+            when {
+                changeset "**/worker/**"
+                branch 'master'  // Reverted back to 'master'
+            }
+            steps {
+                echo 'Packaging worker app with Docker...'
+                script {
+                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
+                        def workerImage = docker.build("chrisanich/worker:v${env.BUILD_ID}", "./worker")
+                        workerImage.push()
+                        workerImage.push("${env.BRANCH_NAME}")
+                        workerImage.push("latest")
+                    }
+                }
+            }
+        }
     }
+
     post {
         always {
-            echo 'Job is complete'  // Final message after the pipeline finishes
+            echo 'Building multibranch pipeline for worker is completed.'
         }
     }
 }
-
