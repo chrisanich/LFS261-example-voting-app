@@ -1,28 +1,40 @@
 pipeline {
-    agent any  // Use any available agent
+    agent none  // No default agent for the entire pipeline
 
     stages {
         stage('Build') {
+            agent {
+                docker {
+                    image 'node:18-slim'  // Use the Node.js Docker image for the build stage
+                    args '-v $HOME/.npm:/root/.npm'
+                }
+            }
             steps {
                 echo 'Building result application...'
                 dir('result') {
-                    sh 'npm install'
+                    sh 'npm install'  // Run npm install to set up dependencies
                 }
             }
         }
 
         stage('Test') {
+            agent {
+                docker {
+                    image 'node:18-slim'  // Use the Node.js Docker image for the test stage
+                }
+            }
             steps {
                 echo 'Running tests on result application...'
                 dir('result') {
-                    sh 'npm test'
+                    sh 'npm test'  // Run npm tests
                 }
             }
         }
 
         stage('Docker Build & Push') {
+            agent any
             environment {
-                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Ensure you have this credential set in Jenkins
+                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Docker Hub credentials
             }
             steps {
                 script {
