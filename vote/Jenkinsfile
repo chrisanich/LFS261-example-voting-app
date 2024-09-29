@@ -1,28 +1,41 @@
 pipeline {
-    agent any  // Use any available agent
+    agent none  // No default agent for the entire pipeline
 
     stages {
         stage('Build') {
+            agent {
+                docker {
+                    image 'python:3.11-slim'  // Use the Python Docker image that includes pip
+                    args '-v $HOME/.m2:/root/.m2'
+                }
+            }
             steps {
                 echo 'Building vote application...'
                 dir('vote') {
-                    sh 'pip install -r requirements.txt'
+                    sh 'pip install --upgrade pip'  // Upgrade pip to avoid compatibility issues
+                    sh 'pip install -r requirements.txt'  // Install dependencies using pip
                 }
             }
         }
 
         stage('Test') {
+            agent {
+                docker {
+                    image 'python:3.11-slim'  // Use the same image for the test stage
+                }
+            }
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
-                    sh 'pytest'
+                    sh 'pytest'  // Run tests using pytest
                 }
             }
         }
 
         stage('Docker Build & Push') {
+            agent any
             environment {
-                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Ensure you have this credential set in Jenkins
+                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Use Docker Hub credentials
             }
             steps {
                 script {
