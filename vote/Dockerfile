@@ -1,7 +1,7 @@
 # Base stage using the Python runtime image
 FROM python:3.11-slim AS base
 
-# Add curl for health check
+# Install necessary packages
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl && \
     rm -rf /var/lib/apt/lists/*
@@ -13,16 +13,7 @@ WORKDIR /usr/local/app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Define a development stage for local development
-FROM base AS dev
-RUN pip install watchdog
-ENV FLASK_ENV=development
-CMD ["python", "app.py"]
-
-# Define the final production stage
-FROM base AS final
-
-# Copy all source code to the working directory
+# Copy all source code to the container
 COPY . .
 
 # Expose port 80 and run the application with gunicorn
