@@ -1,17 +1,8 @@
 pipeline {
-    agent none  // No default agent for the entire pipeline
+    agent any  // Use any available agent
 
     stages {
-        stage('build') {
-            when {
-                changeset "**/result/**"
-            }
-            agent {
-                docker {
-                    image 'node:18-slim'  // Node.js image for the result application
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
+        stage('Build') {
             steps {
                 echo 'Building result application...'
                 dir('result') {
@@ -20,16 +11,7 @@ pipeline {
             }
         }
 
-        stage('test') {
-            when {
-                changeset "**/result/**"
-            }
-            agent {
-                docker {
-                    image 'node:18-slim'
-                    args '-v $HOME/.m2:/root/.m2'
-                }
-            }
+        stage('Test') {
             steps {
                 echo 'Running tests on result application...'
                 dir('result') {
@@ -38,19 +20,16 @@ pipeline {
             }
         }
 
-        stage('docker-package') {
-            agent any
-            when {
-                changeset "**/result/**"
-                branch 'master'
+        stage('Docker Build & Push') {
+            environment {
+                DOCKER_HUB_CREDENTIALS = credentials('dockerlogin')  // Ensure you have this credential set in Jenkins
             }
             steps {
-                echo 'Building Docker image for result application...'
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerlogin') {
-                        def resultImage = docker.build("chrisanich/result:v${env.BUILD_ID}", "./result")
+                    docker.withRegistry('https://index.docker.io/v1/', DOCKER_HUB_CREDENTIALS) {
+                        def resultImage = docker.build("chrisanich/result:${env.BUILD_NUMBER}", "./result")
                         resultImage.push()
-                        resultImage.push("latest")
+                        resultImage.push('latest')
                     }
                 }
             }
