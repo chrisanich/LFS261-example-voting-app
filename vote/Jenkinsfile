@@ -1,10 +1,6 @@
 pipeline {
     agent none
 
-    tools {
-        git 'Default'  // Ensure this matches the Git configuration name in Jenkins
-    }
-
     stages {
         stage('Checkout') {
             agent any
@@ -25,13 +21,13 @@ pipeline {
                 echo 'Building vote application...'
                 dir('vote') {
                     sh '''
-                        # Set up virtual environment
+                        # Create a virtual environment
                         python -m venv venv
                         . venv/bin/activate
-                        
-                        # Upgrade pip and install dependencies
+
+                        # Upgrade pip and install dependencies from the correct requirements path
                         pip install --upgrade pip
-                        pip install -r ../requirements.txt
+                        pip install -r ../requirements.txt  # Use the correct path based on requirements location
                         pip install pytest
                     '''
                 }
@@ -53,7 +49,6 @@ pipeline {
                 dir('vote') {
                     sh '''
                         . venv/bin/activate
-                        # Run tests with pytest
                         pytest
                     '''
                 }
