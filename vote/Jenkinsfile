@@ -24,10 +24,14 @@ pipeline {
             steps {
                 echo 'Building vote application...'
                 dir('vote') {
-                    // Install required packages
-                    sh 'pip install -r requirements.txt --user'
-                    // Ensure pytest is installed
-                    sh 'pip install pytest --user'
+                    // Set up virtual environment and install dependencies
+                    sh '''
+                        python -m venv venv
+                        . venv/bin/activate
+                        pip install --upgrade pip
+                        pip install -r requirements.txt
+                        pip install pytest
+                    '''
                 }
             }
         }
@@ -39,16 +43,14 @@ pipeline {
                     args '-u root:root -v $HOME/.m2:/root/.m2'
                 }
             }
-            environment {
-                PATH = "/root/.local/bin:$PATH"  // Ensure the PATH includes the directory where pytest is installed
-            }
             steps {
                 echo 'Running tests on vote application...'
                 dir('vote') {
-                    // Verify pytest is in PATH
-                    sh 'echo $PATH'
-                    // Run pytest
-                    sh 'pytest || { echo "pytest not found in PATH"; exit 1; }'
+                    // Run tests within the virtual environment
+                    sh '''
+                        . venv/bin/activate
+                        pytest
+                    '''
                 }
             }
         }
