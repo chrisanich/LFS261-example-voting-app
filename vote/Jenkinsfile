@@ -25,6 +25,7 @@ pipeline {
                 echo 'Building vote application...'
                 dir('vote') {
                     sh 'pip install -r requirements.txt --user'
+                    sh 'pip install pytest --user'  // Install pytest explicitly
                 }
             }
         }
@@ -35,6 +36,9 @@ pipeline {
                     image 'python:3.11-slim'
                     args '-u root:root -v $HOME/.m2:/root/.m2'
                 }
+            }
+            environment {
+                PATH = "/root/.local/bin:$PATH"  // Add the local bin directory to PATH
             }
             steps {
                 echo 'Running tests on vote application...'
