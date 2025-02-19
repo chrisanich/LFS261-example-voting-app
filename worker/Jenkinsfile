@@ -1,39 +1,44 @@
 pipeline {
-    agent any
-    
-    tools {
-        maven 'maven 3.9.8'
+    agent {
+        docker {
+            image 'maven:3.9.8-sapmachine-21'
+            args '-v $HOME/.m2:/root/.m2'
+        }
     }
-    
+
     stages {
         stage('Build') {
             steps {
-                echo 'Compiling worker app'
+                echo 'Building worker app'
                 dir('worker') {
                     sh 'mvn compile'
                 }
             }
         }
-        
+
         stage('Test') {
             steps {
-                echo 'Running Unit Tests on worker app'
-                sh 'mvn test'
+                echo 'Running unit tests on worker app'
+                dir('worker') {
+                    sh 'mvn clean test'
+                }
             }
         }
-        
+
         stage('Package') {
             steps {
-                echo 'Packaging worker app'
-                sh 'mvn package'
+                echo 'Packaging worker app into a JAR file'
+                dir('worker') {
+                    sh 'mvn package -DskipTests'
+                    archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                }
             }
         }
     }
-    
+
     post {
         always {
-            echo 'Building multibranch pipeline for worker is completed.'
+            echo 'The job is complete'
         }
     }
 }
-
